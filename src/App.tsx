@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Telemetria from "./pages/Telemetria";
+import DataQuality from "./pages/DataQuality";
 import Marketplace from "./pages/Marketplace";
 import Financeiro from "./pages/Financeiro";
 import NotFound from "./pages/NotFound";
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/telemetria" element={<Telemetria />} />
+          <Route path="/data-quality" element={<DataQuality />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/financeiro" element={<Financeiro />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
