@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Telemetria from "./pages/Telemetria";
 import DataQuality from "./pages/DataQuality";
+import Manutencao from "./pages/Manutencao";
 import Marketplace from "./pages/Marketplace";
 import Financeiro from "./pages/Financeiro";
 import NotFound from "./pages/NotFound";
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/telemetria" element={<Telemetria />} />
           <Route path="/data-quality" element={<DataQuality />} />
+          <Route path="/manutencao" element={<Manutencao />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/financeiro" element={<Financeiro />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
