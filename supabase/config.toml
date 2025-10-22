@@ -1,1 +1,4 @@
 project_id = "egtedxtulrpvasftcqps"
+
+[functions.caterpillar-api]
+verify_jwt = false
