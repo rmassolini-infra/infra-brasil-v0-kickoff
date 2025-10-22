@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Store, DollarSign, Activity, CheckCircle, Wrench, Link as LinkIcon } from "lucide-react";
+import { LayoutDashboard, Store, DollarSign, Activity, CheckCircle, Wrench } from "lucide-react";
 import Logo from "./Logo";
 
 const Navigation = () => {
@@ -11,7 +11,6 @@ const Navigation = () => {
     { path: "/telemetria", label: "Telemetria", icon: Activity },
     { path: "/data-quality", label: "Qualidade de Dados", icon: CheckCircle },
     { path: "/manutencao", label: "Manutenção", icon: Wrench },
-    { path: "/caterpillar", label: "Caterpillar API", icon: LinkIcon },
     { path: "/marketplace", label: "Marketplace", icon: Store },
     { path: "/financeiro", label: "Financeiro", icon: DollarSign },
   ];

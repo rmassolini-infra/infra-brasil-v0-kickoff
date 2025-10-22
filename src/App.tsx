@@ -10,7 +10,6 @@ import DataQuality from "./pages/DataQuality";
 import Manutencao from "./pages/Manutencao";
 import Marketplace from "./pages/Marketplace";
 import Financeiro from "./pages/Financeiro";
-import CaterpillarIntegration from "./pages/CaterpillarIntegration";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,7 +28,6 @@ const App = () => (
           <Route path="/manutencao" element={<Manutencao />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/financeiro" element={<Financeiro />} />
-          <Route path="/caterpillar" element={<CaterpillarIntegration />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
