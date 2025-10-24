@@ -106,6 +106,31 @@ const Dashboard = () => {
           </p>
         </div>
 
+        {/* Alerts */}
+        {warningAdapters > 0 && (
+          <Card className="glass-card p-4 mb-8 border-warning/50 bg-warning/5">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              <div>
+                <p className="font-semibold text-warning">Atenção</p>
+                <p className="text-sm text-muted-foreground">
+                  {warningAdapters} adapter(s) com latência elevada ou taxa de sucesso abaixo de 95%
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* OEM Adapters Grid */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4">Status dos Adapters OEM</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {adapters.map((adapter, index) => (
+              <AdapterStatusCard key={index} {...adapter} />
+            ))}
+          </div>
+        </div>
+
         {/* System Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <Card className="glass-card p-6">
@@ -185,31 +210,6 @@ const Dashboard = () => {
               <span>Últimas 24h</span>
             </div>
           </Card>
-        </div>
-
-        {/* Alerts */}
-        {warningAdapters > 0 && (
-          <Card className="glass-card p-4 mb-8 border-warning/50 bg-warning/5">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-warning" />
-              <div>
-                <p className="font-semibold text-warning">Atenção</p>
-                <p className="text-sm text-muted-foreground">
-                  {warningAdapters} adapter(s) com latência elevada ou taxa de sucesso abaixo de 95%
-                </p>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* OEM Adapters Grid */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold mb-4">Status dos Adapters OEM</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {adapters.map((adapter, index) => (
-              <AdapterStatusCard key={index} {...adapter} />
-            ))}
-          </div>
         </div>
 
         {/* Data Quality Metrics */}

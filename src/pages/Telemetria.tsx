@@ -3,6 +3,9 @@ import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Gauge, Droplet, Clock, Activity, Zap } from "lucide-react";
+import komatsuImg from "@/assets/komatsu-pc200.png";
+import caterpillarImg from "@/assets/caterpillar-320d.png";
+import volvoImg from "@/assets/volvo-ec210.png";
 
 interface TelemetryData {
   asset_id: string;
@@ -115,6 +118,13 @@ export default function Telemetria() {
     return <Badge variant={config.variant as any}>{config.label}</Badge>;
   };
 
+  const getMachineImage = (model: string) => {
+    if (model.includes("PC200")) return komatsuImg;
+    if (model.includes("320D")) return caterpillarImg;
+    if (model.includes("EC210")) return volvoImg;
+    return komatsuImg;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -145,6 +155,14 @@ export default function Telemetria() {
                   <p className="text-xs text-muted-foreground font-mono mt-1">{asset.asset_id}</p>
                 </div>
                 {getEventTypeBadge(asset.event_type)}
+              </div>
+
+              <div className="mb-4 flex items-center justify-center bg-secondary/20 rounded-lg p-4">
+                <img 
+                  src={getMachineImage(asset.model)} 
+                  alt={`${asset.oem} ${asset.model}`}
+                  className="w-full h-32 object-contain"
+                />
               </div>
 
               <div className="space-y-3">
