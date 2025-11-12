@@ -171,49 +171,71 @@ const Dashboard = () => {
                     </div>
 
                     {/* Detalhes do Dispositivo de Telemetria */}
-                    <div className="border-t pt-4 mt-4">
-                      <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                        <Activity className="h-4 w-4" />
-                        Dispositivo de Telemetria
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Solução</p>
-                          <p className="text-sm font-medium">PLE683</p>
+                    {asset.device_info && (
+                      <div className="border-t pt-4 mt-4">
+                        <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                          <Activity className="h-4 w-4" />
+                          Dispositivo de Telemetria
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {asset.device_info.solution && (
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Solução</p>
+                              <p className="text-sm font-medium">{asset.device_info.solution}</p>
+                            </div>
+                          )}
+                          
+                          {asset.device_info.primary_device && (
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Dispositivo Principal</p>
+                              <p className="text-sm font-medium">{asset.device_info.primary_device}</p>
+                            </div>
+                          )}
+                          
+                          {asset.device_info.device_serial && (
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Serial do Dispositivo</p>
+                              <p className="text-sm font-medium">{asset.device_info.device_serial}</p>
+                            </div>
+                          )}
+                          
+                          {asset.device_info.software_part && (
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Software</p>
+                              <p className="text-sm font-medium">{asset.device_info.software_part}</p>
+                            </div>
+                          )}
+                          
+                          {asset.device_info.hardware_part && (
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Hardware</p>
+                              <p className="text-sm font-medium">{asset.device_info.hardware_part}</p>
+                            </div>
+                          )}
+                          
+                          {asset.device_info.communication_method && (
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Comunicação</p>
+                              <p className="text-sm font-medium">{asset.device_info.communication_method}</p>
+                            </div>
+                          )}
                         </div>
                         
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Dispositivo Principal</p>
-                          <p className="text-sm font-medium">PLE602</p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Serial do Dispositivo</p>
-                          <p className="text-sm font-medium">21022600900C002P</p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Software</p>
-                          <p className="text-sm font-medium">6679193-00</p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Hardware</p>
-                          <p className="text-sm font-medium">5174512-07</p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Comunicação</p>
-                          <p className="text-sm font-medium">Celular e satélite</p>
-                        </div>
+                        {asset.device_info.data_connection !== undefined && (
+                          <div className="mt-3">
+                            <Badge 
+                              variant="outline" 
+                              className={asset.device_info.data_connection 
+                                ? "bg-success/10 text-success border-success/20" 
+                                : "bg-muted text-muted-foreground border-muted-foreground/20"
+                              }
+                            >
+                              Conexão de Dados: {asset.device_info.data_connection ? "Ativa" : "Inativa"}
+                            </Badge>
+                          </div>
+                        )}
                       </div>
-                      
-                      <div className="mt-3">
-                        <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                          Conexão de Dados: Ativa
-                        </Badge>
-                      </div>
-                    </div>
+                    )}
                   </Card>
                 ))}
               </div>

@@ -10,6 +10,16 @@ let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
 
 // Tipos para normalização de dados (INFRA canonical schema)
+interface DeviceInfo {
+  solution?: string;
+  primary_device?: string;
+  device_serial?: string;
+  software_part?: string;
+  hardware_part?: string;
+  communication_method?: string;
+  data_connection?: boolean;
+}
+
 interface NormalizedAsset {
   oem: string;
   oem_asset_id: string;
@@ -19,6 +29,7 @@ interface NormalizedAsset {
   serial?: string;
   subscription?: string;
   status?: string;
+  device_info?: DeviceInfo;
 }
 
 interface NormalizedLocation {
@@ -145,7 +156,8 @@ async function getCaterpillarToken(): Promise<string> {
 
 async function callCaterpillarAPI(endpoint: string, token: string) {
   return retryWithBackoff(async () => {
-    const baseUrl = 'https://api.cat.com/telematics/iso15143';
+    // Try different base URLs based on the API version
+    const baseUrl = 'https://api.cat.com';
     const url = `${baseUrl}${endpoint}`;
     
     console.log('Calling Caterpillar API:', url);
@@ -180,6 +192,8 @@ async function callCaterpillarAPI(endpoint: string, token: string) {
 
 // Normalization functions (canonical INFRA schema)
 function normalizeAsset(raw: any): NormalizedAsset {
+  const device = raw.device || raw.telematicsDevice || raw.telematics || {};
+  
   return {
     oem: 'caterpillar',
     oem_asset_id: raw.id || raw.assetId || raw.assetID || '',
@@ -189,6 +203,15 @@ function normalizeAsset(raw: any): NormalizedAsset {
     serial: raw.serialNumber || raw.serial,
     subscription: raw.subscriptionStatus || raw.subscription,
     status: raw.status || raw.assetStatus,
+    device_info: {
+      solution: device.solution || device.model || device.type,
+      primary_device: device.primaryDevice || device.deviceModel,
+      device_serial: device.serialNumber || device.serial || device.deviceSerial,
+      software_part: device.softwarePartNumber || device.softwareVersion,
+      hardware_part: device.hardwarePartNumber || device.hardwareVersion,
+      communication_method: device.communicationMethod || device.connectivity,
+      data_connection: device.dataConnection !== undefined ? device.dataConnection : device.hasDataConnection,
+    },
   };
 }
 
@@ -277,7 +300,22 @@ serve(async (req) => {
     if (method === 'assets') {
       console.log('Fetching assets...');
       const page = endpoint || '1';
-      const data = await callCaterpillarAPI(`/assets?pageSize=100&page=${page}`, token);
+      
+      // Try multiple endpoint variations
+      let data;
+      try {
+        // Try ISO 15143-3 standard endpoint first
+        data = await callCaterpillarAPI(`/telematics/iso15143/assets?pageSize=100&page=${page}`, token);
+      } catch (e) {
+        console.log('ISO endpoint failed, trying VisionLink endpoint...');
+        try {
+          data = await callCaterpillarAPI(`/visionlink/v2/assets?pageSize=100&page=${page}`, token);
+        } catch (e2) {
+          console.log('VisionLink v2 failed, trying fleet endpoint...');
+          data = await callCaterpillarAPI(`/fleet/equipment?pageSize=100&page=${page}`, token);
+        }
+      }
+      
       const normalized = normalizeFleet(data);
       console.log(`Normalized ${normalized.assets.length} assets`);
       

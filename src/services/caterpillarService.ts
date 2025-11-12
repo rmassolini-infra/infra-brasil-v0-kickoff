@@ -1,5 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export interface DeviceInfo {
+  solution?: string;
+  primary_device?: string;
+  device_serial?: string;
+  software_part?: string;
+  hardware_part?: string;
+  communication_method?: string;
+  data_connection?: boolean;
+}
+
 export interface NormalizedAsset {
   oem: string;
   oem_asset_id: string;
@@ -9,6 +19,7 @@ export interface NormalizedAsset {
   serial?: string;
   subscription?: string;
   status?: string;
+  device_info?: DeviceInfo;
 }
 
 export interface NormalizedLocation {
