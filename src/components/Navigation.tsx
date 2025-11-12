@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Link as LinkIcon } from "lucide-react";
+import { LayoutDashboard, Link as LinkIcon, Activity } from "lucide-react";
 import Logo from "./Logo";
 
 const Navigation = () => {
@@ -8,6 +8,7 @@ const Navigation = () => {
   const links = [
     { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { path: "/caterpillar", label: "Caterpillar API", icon: LinkIcon },
+    { path: "/diagnostics", label: "Diagnóstico", icon: Activity },
   ];
 
   return (

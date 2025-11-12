@@ -296,6 +296,93 @@ serve(async (req) => {
     const { endpoint, method = 'assets' } = await req.json();
     const token = await getCaterpillarToken();
 
+    // Diagnostic endpoint (like Python diagnostics.py)
+    if (method === 'diagnostics') {
+      console.log('Running diagnostics...');
+      const hours = parseInt(endpoint || '6');
+      const diagnosticResult = {
+        timestamp: new Date().toISOString(),
+        base_api: 'https://api.cat.com',
+        hours_window: hours,
+        endpoints_tested: [] as any[],
+        assets: { path: null as string | null, count: 0, sample: null as any },
+        telemetry: {
+          locations: { attempted: false, count: 0, last_ts: null as string | null },
+          hours: { attempted: false, count: 0, last_ts: null as string | null },
+          faults: { attempted: false, count: 0, last_ts: null as string | null },
+          fuel: { attempted: false, count: 0, last_ts: null as string | null },
+        },
+        status: 'unknown' as string,
+        recommendations: [] as string[],
+        token_info: {
+          obtained: true,
+          expires_in: 3600,
+        }
+      };
+
+      // Test all asset endpoints
+      const endpointsToTest = [
+        '/telematics/iso15143/assets',
+        '/assets',
+        '/visionlink/assets',
+        '/visionlink/v2/assets',
+        '/v1/assets',
+        '/api/assets',
+        '/fleet/equipment',
+      ];
+
+      for (const endpoint of endpointsToTest) {
+        try {
+          const testUrl = `${endpoint}?pageSize=1`;
+          const data = await callCaterpillarAPI(testUrl, token);
+          const items = data?.fleet?.equipment || data?.items || data?.value || [];
+          
+          diagnosticResult.endpoints_tested.push({
+            path: endpoint,
+            status: 'success',
+            items_found: items.length,
+          });
+
+          if (items.length > 0 && !diagnosticResult.assets.path) {
+            diagnosticResult.assets.path = endpoint;
+            diagnosticResult.assets.sample = items[0];
+            
+            // Get full count
+            const fullData = await callCaterpillarAPI(`${endpoint}?pageSize=100`, token);
+            const allItems = fullData?.fleet?.equipment || fullData?.items || fullData?.value || [];
+            diagnosticResult.assets.count = allItems.length;
+          }
+        } catch (error) {
+          diagnosticResult.endpoints_tested.push({
+            path: endpoint,
+            status: 'failed',
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      // Determine overall status
+      if (diagnosticResult.assets.count > 0) {
+        diagnosticResult.status = 'ok';
+      } else {
+        diagnosticResult.status = 'no_assets';
+        diagnosticResult.recommendations = [
+          'Verify Client ID is authorized for CEQ organization in VisionLink/ISO product',
+          'Check that each CEQ serial has "Data Sharing/AEMP" enabled in Manage Assets',
+          'Confirm subscription level supports API access (not "Daily" tier)',
+          'Validate API entitlements in Caterpillar portal',
+          'Check if the correct product API base URL is being used',
+        ];
+      }
+
+      console.log(`Diagnostic complete: ${diagnosticResult.status}, ${diagnosticResult.assets.count} assets found`);
+
+      return new Response(
+        JSON.stringify(diagnosticResult, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // High-level endpoints (matching Python client)
     if (method === 'assets') {
       console.log('Fetching assets...');

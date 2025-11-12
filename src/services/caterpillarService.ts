@@ -139,6 +139,11 @@ class CaterpillarService {
     const endpoint = `/fleet/equipment/makeModelSerial/${make}/${model}/${serialNumber}`;
     return this.callEdgeFunction('equipment', endpoint);
   }
+
+  async runDiagnostics(hours: number = 6) {
+    const response = await this.callEdgeFunction('diagnostics', hours.toString());
+    return response;
+  }
 }
 
 export const caterpillarService = new CaterpillarService();
