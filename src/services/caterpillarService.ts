@@ -1,30 +1,21 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export interface NormalizedAsset {
+  oem_asset_id: string;
+  asset_name?: string;
+  make: string;
+  model?: string;
+  serial_number?: string;
+  operating_hours?: number;
+  fuel_percent?: number;
+  engine_speed?: number;
+  latitude?: number;
+  longitude?: number;
+  altitude?: number;
+}
+
 export interface FleetSnapshot {
-  fleet?: {
-    equipment?: Array<{
-      header?: {
-        equipmentID?: string;
-        make?: string;
-        model?: string;
-        serialNumber?: string;
-      };
-      location?: {
-        latitude?: number;
-        longitude?: number;
-        altitude?: number;
-      };
-      cumulativeOperatingHours?: {
-        hour?: number;
-      };
-      fuelRemaining?: {
-        percent?: number;
-      };
-      engineStatus?: {
-        speed?: number;
-      };
-    }>;
-  };
+  assets: NormalizedAsset[];
 }
 
 export interface FaultData {
@@ -60,7 +51,8 @@ class CaterpillarService {
   }
 
   async getFleetSnapshot(pageNumber: number = 1): Promise<FleetSnapshot> {
-    return this.callEdgeFunction('fleet', pageNumber.toString());
+    const response = await this.callEdgeFunction('fleet', pageNumber.toString());
+    return response as FleetSnapshot;
   }
 
   async getEquipmentSnapshot(make: string, model: string, serialNumber: string) {

@@ -40,7 +40,7 @@ const CaterpillarIntegration = () => {
     }
   };
 
-  const equipmentCount = fleetData?.fleet?.equipment?.length || 0;
+  const equipmentCount = fleetData?.assets?.length || 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -120,57 +120,49 @@ const CaterpillarIntegration = () => {
             
             {equipmentCount > 0 ? (
               <div className="space-y-4">
-                {fleetData.fleet.equipment.map((equipment: any, index: number) => {
-                  const header = equipment.header || {};
-                  const location = equipment.location || {};
-                  const hours = equipment.cumulativeOperatingHours?.hour || 0;
-                  const fuel = equipment.fuelRemaining?.percent || 0;
-                  const speed = equipment.engineStatus?.speed || 0;
-
-                  return (
-                    <Card key={index} className="p-4 hover:ring-1 hover:ring-primary/50 transition-all">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="font-semibold text-lg">
-                            {header.make || "N/A"} {header.model || "N/A"}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            S/N: {header.serialNumber || "N/A"}
-                          </p>
-                        </div>
-                        <Badge variant="outline">
-                          ID: {header.equipmentID || "N/A"}
-                        </Badge>
+                {fleetData.assets.map((asset: any, index: number) => (
+                  <Card key={index} className="p-4 hover:ring-1 hover:ring-primary/50 transition-all">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold text-lg">
+                          {asset.make} {asset.model || "N/A"}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          S/N: {asset.serial_number || "N/A"}
+                        </p>
                       </div>
+                      <Badge variant="outline">
+                        ID: {asset.oem_asset_id || "N/A"}
+                      </Badge>
+                    </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Horas de Operação</p>
-                          <p className="text-lg font-semibold">{hours.toFixed(1)}h</p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Combustível</p>
-                          <p className="text-lg font-semibold">{fuel.toFixed(1)}%</p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Velocidade</p>
-                          <p className="text-lg font-semibold">{speed.toFixed(0)} km/h</p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Localização</p>
-                          <p className="text-sm font-mono">
-                            {location.latitude ? 
-                              `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}` 
-                              : "N/A"}
-                          </p>
-                        </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Horas de Operação</p>
+                        <p className="text-lg font-semibold">{(asset.operating_hours || 0).toFixed(1)}h</p>
                       </div>
-                    </Card>
-                  );
-                })}
+                      
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Combustível</p>
+                        <p className="text-lg font-semibold">{(asset.fuel_percent || 0).toFixed(1)}%</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Velocidade</p>
+                        <p className="text-lg font-semibold">{(asset.engine_speed || 0).toFixed(0)} km/h</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Localização</p>
+                        <p className="text-sm font-mono">
+                          {asset.latitude && asset.longitude ? 
+                            `${asset.latitude.toFixed(4)}, ${asset.longitude.toFixed(4)}` 
+                            : "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-8">

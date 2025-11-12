@@ -47,21 +47,19 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const equipment = fleetData?.fleet?.equipment || [];
-  const totalEquipment = equipment.length;
-  
-  // Calcular métricas agregadas
-  const totalHours = equipment.reduce((sum, eq) => 
-    sum + (eq.cumulativeOperatingHours?.hour || 0), 0
-  );
-  const avgFuel = equipment.length > 0 
-    ? equipment.reduce((sum, eq) => sum + (eq.fuelRemaining?.percent || 0), 0) / equipment.length
+  // Calculate fleet statistics
+  const assets = fleetData?.assets || [];
+  const totalEquipment = assets.length;
+  const totalHours = assets.reduce((sum, asset) => 
+    sum + (asset.operating_hours || 0), 0);
+  const avgFuel = totalEquipment > 0 
+    ? assets.reduce((sum, asset) => sum + (asset.fuel_percent || 0), 0) / totalEquipment 
     : 0;
-  const avgSpeed = equipment.length > 0
-    ? equipment.reduce((sum, eq) => sum + (eq.engineStatus?.speed || 0), 0) / equipment.length
+  const avgSpeed = totalEquipment > 0
+    ? assets.reduce((sum, asset) => sum + (asset.engine_speed || 0), 0) / totalEquipment
     : 0;
-  const equipmentWithLocation = equipment.filter(eq => 
-    eq.location?.latitude && eq.location?.longitude
+  const equipmentWithLocation = assets.filter(
+    asset => asset.latitude && asset.longitude
   ).length;
 
   return (
@@ -186,73 +184,65 @@ const Dashboard = () => {
         <Card className="glass-card p-6">
           <h2 className="text-2xl font-semibold mb-6">Equipamentos da Frota</h2>
           
-          {loading && equipment.length === 0 ? (
+          {loading && assets.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : equipment.length > 0 ? (
+          ) : assets.length > 0 ? (
             <div className="space-y-4">
-              {equipment.map((eq, index) => {
-                const header = eq.header || {};
-                const location = eq.location || {};
-                const hours = eq.cumulativeOperatingHours?.hour || 0;
-                const fuel = eq.fuelRemaining?.percent || 0;
-                const speed = eq.engineStatus?.speed || 0;
-
-                return (
-                  <Card key={index} className="p-4 hover:ring-2 hover:ring-primary/50 transition-all">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">
-                          {header.make || "N/A"} {header.model || "N/A"}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          S/N: {header.serialNumber || "N/A"}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Badge variant="outline">
-                          ID: {header.equipmentID || "N/A"}
+              {assets.map((asset, index) => (
+                <Card key={index} className="p-4 hover:ring-2 hover:ring-primary/50 transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">
+                        {asset.make} {asset.model || "N/A"}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        S/N: {asset.serial_number || "N/A"}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Badge variant="outline">
+                        ID: {asset.oem_asset_id || "N/A"}
+                      </Badge>
+                      {(asset.fuel_percent || 0) < 30 && (
+                        <Badge variant="warning" className="flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Combustível Baixo
                         </Badge>
-                        {fuel < 30 && (
-                          <Badge variant="warning" className="flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            Combustível Baixo
-                          </Badge>
-                        )}
-                      </div>
+                      )}
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Horas de Operação</p>
-                        <p className="text-lg font-semibold">{hours.toFixed(1)}h</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Combustível</p>
-                        <p className={`text-lg font-semibold ${fuel < 30 ? 'text-warning' : ''}`}>
-                          {fuel.toFixed(1)}%
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Velocidade</p>
-                        <p className="text-lg font-semibold">{speed.toFixed(0)} km/h</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Localização</p>
-                        <p className="text-sm font-mono">
-                          {location.latitude ? 
-                            `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}` 
-                            : "N/A"}
-                        </p>
-                      </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Horas de Operação</p>
+                      <p className="text-lg font-semibold">{(asset.operating_hours || 0).toFixed(1)}h</p>
                     </div>
-                  </Card>
-                );
-              })}
+                    
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Combustível</p>
+                      <p className={`text-lg font-semibold ${(asset.fuel_percent || 0) < 30 ? 'text-warning' : ''}`}>
+                        {(asset.fuel_percent || 0).toFixed(1)}%
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Velocidade</p>
+                      <p className="text-lg font-semibold">{(asset.engine_speed || 0).toFixed(0)} km/h</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Localização</p>
+                      <p className="text-sm font-mono">
+                        {asset.latitude && asset.longitude ? 
+                          `${asset.latitude.toFixed(4)}, ${asset.longitude.toFixed(4)}` 
+                          : "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
           ) : (
             <div className="text-center py-12">
