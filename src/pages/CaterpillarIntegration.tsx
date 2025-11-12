@@ -98,11 +98,16 @@ const CaterpillarIntegration = () => {
           {fleetData && (
             <div className="flex items-start gap-3 p-4 bg-success/10 border border-success/20 rounded-lg">
               <CheckCircle2 className="h-5 w-5 text-success mt-0.5" />
-              <div>
-                <p className="font-semibold text-success">Conexão Estabelecida</p>
+              <div className="flex-1">
+                <p className="font-semibold text-success">✅ Autenticação OAuth Bem-sucedida</p>
                 <p className="text-sm text-success/80 mt-1">
-                  {equipmentCount} equipamentos encontrados na frota
+                  Conectado à API Caterpillar • {equipmentCount} equipamento{equipmentCount !== 1 ? 's' : ''} encontrado{equipmentCount !== 1 ? 's' : ''}
                 </p>
+                {equipmentCount === 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    💡 A autenticação está funcionando corretamente. Nenhum equipamento cadastrado na frota ainda.
+                  </p>
+                )}
               </div>
             </div>
           )}

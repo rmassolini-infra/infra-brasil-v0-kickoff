@@ -23,11 +23,13 @@ async function getCaterpillarToken(): Promise<string> {
   }
 
   console.log('Fetching new Caterpillar OAuth token...');
+  console.log('Client ID:', clientId);
 
   // Using Azure AD OAuth 2.0 client credentials flow with Caterpillar's tenant ID
-  const tokenUrl = 'https://login.microsoftonline.com/ceb177bf-013b-49ab-8a9c-4abce32afc1e/oauth2/v2.0/token';
+  const tenantId = 'ceb177bf-013b-49ab-8a9c-4abce32afc1e';
+  const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
   
-  // Construct the scope using the client ID
+  // Construct the scope - use the scope provided by user
   const scope = `${clientId}/.default`;
   
   const body = new URLSearchParams({
@@ -37,7 +39,9 @@ async function getCaterpillarToken(): Promise<string> {
     'scope': scope
   });
   
-  console.log('Requesting token with scope:', scope);
+  console.log('Token URL:', tokenUrl);
+  console.log('Scope:', scope);
+  console.log('Request body (without secret):', { grant_type: 'client_credentials', client_id: clientId, scope });
   
   const response = await fetch(tokenUrl, {
     method: 'POST',
@@ -86,6 +90,13 @@ async function callCaterpillarAPI(endpoint: string, token: string) {
   if (!response.ok) {
     const errorText = await response.text();
     console.error('API call failed:', response.status, errorText);
+    
+    // Handle 404 as empty fleet rather than error
+    if (response.status === 404) {
+      console.log('No records found, returning empty fleet');
+      return { fleet: { equipment: [] } };
+    }
+    
     throw new Error(`API call failed: ${response.status} ${errorText}`);
   }
 
