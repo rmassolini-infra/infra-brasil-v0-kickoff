@@ -153,7 +153,7 @@ const Dashboard = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Fabricante</p>
                         <p className="text-lg font-semibold">{asset.make}</p>
@@ -167,6 +167,51 @@ const Dashboard = () => {
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Assinatura</p>
                         <p className="text-lg font-semibold">{asset.subscription || "N/A"}</p>
+                      </div>
+                    </div>
+
+                    {/* Detalhes do Dispositivo de Telemetria */}
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                        <Activity className="h-4 w-4" />
+                        Dispositivo de Telemetria
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Solução</p>
+                          <p className="text-sm font-medium">PLE683</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Dispositivo Principal</p>
+                          <p className="text-sm font-medium">PLE602</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Serial do Dispositivo</p>
+                          <p className="text-sm font-medium">21022600900C002P</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Software</p>
+                          <p className="text-sm font-medium">6679193-00</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Hardware</p>
+                          <p className="text-sm font-medium">5174512-07</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Comunicação</p>
+                          <p className="text-sm font-medium">Celular e satélite</p>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3">
+                        <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+                          Conexão de Dados: Ativa
+                        </Badge>
                       </div>
                     </div>
                   </Card>
