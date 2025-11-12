@@ -24,15 +24,28 @@ async function getCaterpillarToken(): Promise<string> {
 
   console.log('Fetching new Caterpillar OAuth token...');
 
-  const tokenUrl = 'https://fedlogin.cat.com/as/token.oauth2?pfidpadapterid=OAuthAdapterCCDS';
+  // Using Azure AD OAuth 2.0 client credentials flow
+  // Using "organizations" tenant for work/school accounts
+  const tokenUrl = 'https://login.microsoftonline.com/organizations/oauth2/v2.0/token';
+  
+  // Construct the scope using the client ID
+  const scope = `${clientId}/.default`;
+  
+  const body = new URLSearchParams({
+    'grant_type': 'client_credentials',
+    'client_id': clientId,
+    'client_secret': clientSecret,
+    'scope': scope
+  });
+  
+  console.log('Requesting token with scope:', scope);
   
   const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Basic ' + btoa(`${clientId}:${clientSecret}`)
     },
-    body: 'grant_type=client_credentials'
+    body: body.toString()
   });
 
   if (!response.ok) {
