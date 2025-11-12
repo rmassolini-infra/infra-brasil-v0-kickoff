@@ -1,152 +1,123 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import Navigation from "@/components/Navigation";
-import AdapterStatusCard from "@/components/AdapterStatusCard";
 import { 
-  Database, 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle2, 
-  TrendingUp,
-  Server,
-  Clock
+  Loader2,
+  Truck,
+  Fuel,
+  Clock,
+  RefreshCw,
+  MapPin,
+  Gauge,
+  AlertTriangle
 } from "lucide-react";
-
-interface SystemMetrics {
-  totalMessages: number;
-  avgLatency: number;
-  systemUptime: number;
-  activeAdapters: number;
-  errorRate: number;
-}
+import { useToast } from "@/hooks/use-toast";
+import { caterpillarService, FleetSnapshot } from "@/services/caterpillarService";
 
 const Dashboard = () => {
-  const [metrics, setMetrics] = useState<SystemMetrics>({
-    totalMessages: 1847,
-    avgLatency: 234,
-    systemUptime: 99.8,
-    activeAdapters: 4,
-    errorRate: 0.2,
-  });
+  const [loading, setLoading] = useState(false);
+  const [fleetData, setFleetData] = useState<FleetSnapshot | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const { toast } = useToast();
 
-  const [adapters, setAdapters] = useState([
-    {
-      oem: "Komatsu",
-      adapter: "Komtrax v2.1",
-      status: "healthy" as const,
-      messagesPerMin: 45.3,
-      latencyMs: 187,
-      successRate: 99.2,
-      lastSync: "há 2s",
-    },
-    {
-      oem: "Caterpillar",
-      adapter: "VisionLink API",
-      status: "healthy" as const,
-      messagesPerMin: 38.7,
-      latencyMs: 243,
-      successRate: 98.8,
-      lastSync: "há 3s",
-    },
-    {
-      oem: "Volvo",
-      adapter: "CareTrack v3.0",
-      status: "warning" as const,
-      messagesPerMin: 22.1,
-      latencyMs: 4823,
-      successRate: 94.3,
-      lastSync: "há 8s",
-    },
-    {
-      oem: "John Deere",
-      adapter: "JDLink",
-      status: "healthy" as const,
-      messagesPerMin: 31.4,
-      latencyMs: 312,
-      successRate: 99.5,
-      lastSync: "há 1s",
-    },
-  ]);
+  const loadFleetData = async () => {
+    setLoading(true);
+    try {
+      const data = await caterpillarService.getFleetSnapshot(1);
+      setFleetData(data);
+      setLastUpdate(new Date());
+    } catch (err) {
+      toast({
+        title: "Erro ao carregar dados",
+        description: err instanceof Error ? err.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Simulate real-time updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAdapters((prev) =>
-        prev.map((adapter) => ({
-          ...adapter,
-          messagesPerMin: Math.max(0, adapter.messagesPerMin + (Math.random() - 0.5) * 5),
-          latencyMs: Math.max(50, adapter.latencyMs + (Math.random() - 0.5) * 100),
-          successRate: Math.min(100, Math.max(90, adapter.successRate + (Math.random() - 0.5) * 0.5)),
-        }))
-      );
-
-      setMetrics((prev) => ({
-        ...prev,
-        totalMessages: prev.totalMessages + Math.floor(Math.random() * 20),
-        avgLatency: Math.max(100, prev.avgLatency + (Math.random() - 0.5) * 50),
-      }));
-    }, 3000);
-
+    loadFleetData();
+    
+    // Auto-refresh a cada 30 segundos
+    const interval = setInterval(loadFleetData, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const healthyAdapters = adapters.filter((a) => a.status === "healthy").length;
-  const warningAdapters = adapters.filter((a) => a.status === "warning").length;
+  const equipment = fleetData?.fleet?.equipment || [];
+  const totalEquipment = equipment.length;
+  
+  // Calcular métricas agregadas
+  const totalHours = equipment.reduce((sum, eq) => 
+    sum + (eq.cumulativeOperatingHours?.hour || 0), 0
+  );
+  const avgFuel = equipment.length > 0 
+    ? equipment.reduce((sum, eq) => sum + (eq.fuelRemaining?.percent || 0), 0) / equipment.length
+    : 0;
+  const avgSpeed = equipment.length > 0
+    ? equipment.reduce((sum, eq) => sum + (eq.engineStatus?.speed || 0), 0) / equipment.length
+    : 0;
+  const equipmentWithLocation = equipment.filter(eq => 
+    eq.location?.latitude && eq.location?.longitude
+  ).length;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <Navigation />
       
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Dashboard Técnico</h1>
-          <p className="text-muted-foreground">
-            Monitoramento de Adapters OEM • ISO 15143-3 (AEMP 2.0)
-          </p>
-        </div>
-
-        {/* Alerts */}
-        {warningAdapters > 0 && (
-          <Card className="glass-card p-4 mb-8 border-warning/50 bg-warning/5">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-warning" />
-              <div>
-                <p className="font-semibold text-warning">Atenção</p>
-                <p className="text-sm text-muted-foreground">
-                  {warningAdapters} adapter(s) com latência elevada ou taxa de sucesso abaixo de 95%
-                </p>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* OEM Adapters Grid */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Status dos Adapters OEM</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {adapters.map((adapter, index) => (
-              <AdapterStatusCard key={index} {...adapter} />
-            ))}
+      <main className="container mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Dashboard Caterpillar
+            </h1>
+            <p className="text-muted-foreground">
+              Monitoramento em tempo real da frota • API ISO 15143-3
+            </p>
+            {lastUpdate && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
+              </p>
+            )}
           </div>
+          
+          <Button
+            onClick={loadFleetData}
+            disabled={loading}
+            size="lg"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Atualizando...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Atualizar
+              </>
+            )}
+          </Button>
         </div>
 
-        {/* System Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        {/* Métricas Principais */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="glass-card p-6">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 rounded-lg bg-primary/10">
-                <Database className="h-5 w-5 text-primary" />
+                <Truck className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Total Mensagens</p>
-                <p className="text-2xl font-bold">{metrics.totalMessages.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Total de Equipamentos</p>
+                <p className="text-3xl font-bold">{totalEquipment}</p>
               </div>
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 text-success" />
-              <span>+12% vs hora anterior</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Equipamentos ativos na frota
+            </p>
           </Card>
 
           <Card className="glass-card p-6">
@@ -155,127 +126,145 @@ const Dashboard = () => {
                 <Clock className="h-5 w-5 text-info" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Latência Média</p>
-                <p className="text-2xl font-bold">{metrics.avgLatency.toFixed(0)}ms</p>
+                <p className="text-xs text-muted-foreground">Horas Totais</p>
+                <p className="text-3xl font-bold">{totalHours.toFixed(0)}</p>
               </div>
             </div>
-            <div className="flex items-center gap-1 text-xs text-success">
-              <CheckCircle2 className="h-3 w-3" />
-              <span>Dentro do SLA</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Horas operadas acumuladas
+            </p>
           </Card>
 
           <Card className="glass-card p-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-lg bg-success/10">
-                <Server className="h-5 w-5 text-success" />
+              <div className={`p-2 rounded-lg ${avgFuel < 30 ? 'bg-warning/10' : 'bg-success/10'}`}>
+                <Fuel className={`h-5 w-5 ${avgFuel < 30 ? 'text-warning' : 'text-success'}`} />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Uptime</p>
-                <p className="text-2xl font-bold">{metrics.systemUptime}%</p>
+                <p className="text-xs text-muted-foreground">Combustível Médio</p>
+                <p className="text-3xl font-bold">{avgFuel.toFixed(1)}%</p>
               </div>
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Activity className="h-3 w-3" />
-              <span>30 dias rolling</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Nível médio da frota
+            </p>
           </Card>
 
           <Card className="glass-card p-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-lg bg-success/10">
-                <CheckCircle2 className="h-5 w-5 text-success" />
+              <div className="p-2 rounded-lg bg-accent/10">
+                <Gauge className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Adapters Ativos</p>
-                <p className="text-2xl font-bold">{healthyAdapters}/{metrics.activeAdapters}</p>
+                <p className="text-xs text-muted-foreground">Velocidade Média</p>
+                <p className="text-3xl font-bold">{avgSpeed.toFixed(0)}</p>
               </div>
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span>Operacionais</span>
-            </div>
-          </Card>
-
-          <Card className="glass-card p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className={`p-2 rounded-lg ${metrics.errorRate > 1 ? 'bg-destructive/10' : 'bg-warning/10'}`}>
-                <AlertTriangle className={`h-5 w-5 ${metrics.errorRate > 1 ? 'text-destructive' : 'text-warning'}`} />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Taxa de Erro</p>
-                <p className="text-2xl font-bold">{metrics.errorRate}%</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span>Últimas 24h</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              km/h em operação
+            </p>
           </Card>
         </div>
 
-        {/* Data Quality Metrics */}
+        {/* Status de Localização */}
+        <Card className="glass-card p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-semibold">Status de Localização</h2>
+            </div>
+            <Badge variant={equipmentWithLocation === totalEquipment ? "success" : "warning"}>
+              {equipmentWithLocation}/{totalEquipment} com GPS
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {equipmentWithLocation} equipamentos com dados de GPS disponíveis
+          </p>
+        </Card>
+
+        {/* Lista de Equipamentos */}
         <Card className="glass-card p-6">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            Qualidade de Dados (DQ Rules)
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Completude</span>
-                <Badge variant="success">98.7%</Badge>
-              </div>
-              <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                <div className="h-full bg-success" style={{ width: "98.7%" }} />
-              </div>
-              <p className="text-xs text-muted-foreground">Campos obrigatórios presentes</p>
+          <h2 className="text-2xl font-semibold mb-6">Equipamentos da Frota</h2>
+          
+          {loading && equipment.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
+          ) : equipment.length > 0 ? (
+            <div className="space-y-4">
+              {equipment.map((eq, index) => {
+                const header = eq.header || {};
+                const location = eq.location || {};
+                const hours = eq.cumulativeOperatingHours?.hour || 0;
+                const fuel = eq.fuelRemaining?.percent || 0;
+                const speed = eq.engineStatus?.speed || 0;
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Validade</span>
-                <Badge variant="success">99.4%</Badge>
-              </div>
-              <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                <div className="h-full bg-success" style={{ width: "99.4%" }} />
-              </div>
-              <p className="text-xs text-muted-foreground">Valores dentro dos limites</p>
-            </div>
+                return (
+                  <Card key={index} className="p-4 hover:ring-2 hover:ring-primary/50 transition-all">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold text-lg">
+                          {header.make || "N/A"} {header.model || "N/A"}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          S/N: {header.serialNumber || "N/A"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="outline">
+                          ID: {header.equipmentID || "N/A"}
+                        </Badge>
+                        {fuel < 30 && (
+                          <Badge variant="warning" className="flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Combustível Baixo
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Frescor</span>
-                <Badge variant="success">97.2%</Badge>
-              </div>
-              <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                <div className="h-full bg-success" style={{ width: "97.2%" }} />
-              </div>
-              <p className="text-xs text-muted-foreground">Dados &lt; 5min</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Horas de Operação</p>
+                        <p className="text-lg font-semibold">{hours.toFixed(1)}h</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Combustível</p>
+                        <p className={`text-lg font-semibold ${fuel < 30 ? 'text-warning' : ''}`}>
+                          {fuel.toFixed(1)}%
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Velocidade</p>
+                        <p className="text-lg font-semibold">{speed.toFixed(0)} km/h</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Localização</p>
+                        <p className="text-sm font-mono">
+                          {location.latitude ? 
+                            `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}` 
+                            : "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Deduplicação</span>
-                <Badge variant="success">99.8%</Badge>
-              </div>
-              <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                <div className="h-full bg-success" style={{ width: "99.8%" }} />
-              </div>
-              <p className="text-xs text-muted-foreground">Registros únicos</p>
+          ) : (
+            <div className="text-center py-12">
+              <Truck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                Nenhum equipamento encontrado na frota
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                A API está conectada, mas não há equipamentos cadastrados ainda.
+              </p>
             </div>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold mb-1">Schema Registry</p>
-                <p className="text-xs text-muted-foreground">
-                  AEMP 2.0 v1.0 • JSON Schema validado • 0 breaking changes
-                </p>
-              </div>
-              <Badge variant="success">Compliant</Badge>
-            </div>
-          </div>
+          )}
         </Card>
       </main>
     </div>
