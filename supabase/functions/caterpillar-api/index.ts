@@ -9,19 +9,50 @@ const corsHeaders = {
 let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
 
-// Tipos para normalização de dados
+// Tipos para normalização de dados (INFRA canonical schema)
 interface NormalizedAsset {
+  oem: string;
   oem_asset_id: string;
-  asset_name?: string;
+  name?: string;
   make: string;
   model?: string;
-  serial_number?: string;
-  operating_hours?: number;
-  fuel_percent?: number;
-  engine_speed?: number;
-  latitude?: number;
-  longitude?: number;
-  altitude?: number;
+  serial?: string;
+  subscription?: string;
+  status?: string;
+}
+
+interface NormalizedLocation {
+  asset_ref: string;
+  ts: string;
+  lat?: number;
+  lon?: number;
+  speed?: number;
+  heading?: number;
+  source: string;
+}
+
+interface NormalizedHours {
+  asset_ref: string;
+  ts: string;
+  hour_meter?: number;
+  source: string;
+}
+
+interface NormalizedFault {
+  asset_ref: string;
+  ts: string;
+  code?: string;
+  severity?: string;
+  description?: string;
+  source: string;
+}
+
+interface NormalizedFuel {
+  asset_ref: string;
+  ts: string;
+  fuel_used?: number;
+  fuel_level?: number;
+  source: string;
 }
 
 // Função auxiliar para retry com backoff exponencial
@@ -77,13 +108,10 @@ async function getCaterpillarToken(): Promise<string> {
   }
 
   console.log('Fetching new Caterpillar OAuth token...');
-  console.log('Client ID:', clientId);
 
-  // Using Azure AD OAuth 2.0 client credentials flow with Caterpillar's tenant ID
+  // Using Azure AD OAuth 2.0 client credentials flow
   const tenantId = 'ceb177bf-013b-49ab-8a9c-4abce32afc1e';
   const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
-  
-  // Construct the scope - use the scope provided by user
   const scope = `${clientId}/.default`;
   
   const body = new URLSearchParams({
@@ -92,10 +120,6 @@ async function getCaterpillarToken(): Promise<string> {
     'client_secret': clientSecret,
     'scope': scope
   });
-  
-  console.log('Token URL:', tokenUrl);
-  console.log('Scope:', scope);
-  console.log('Request body (without secret):', { grant_type: 'client_credentials', client_id: clientId, scope });
   
   const response = await fetch(tokenUrl, {
     method: 'POST',
@@ -108,23 +132,15 @@ async function getCaterpillarToken(): Promise<string> {
   if (!response.ok) {
     const errorText = await response.text();
     console.error('Token request failed:', response.status, errorText);
-    throw new Error(`Failed to get OAuth token: ${response.status} ${errorText}`);
+    throw new Error(`Failed to get OAuth token: ${response.status}`);
   }
 
   const data = await response.json();
-  const token = data.access_token;
-  
-  if (!token) {
-    throw new Error('No access token in response');
-  }
-  
-  cachedToken = token;
-  
-  // Define expiração com margem de segurança (5 minutos antes)
+  cachedToken = data.access_token;
   tokenExpiry = Date.now() + ((data.expires_in || 3600) - 300) * 1000;
   
   console.log('OAuth token obtained successfully');
-  return token;
+  return cachedToken as string;
 }
 
 async function callCaterpillarAPI(endpoint: string, token: string) {
@@ -146,45 +162,81 @@ async function callCaterpillarAPI(endpoint: string, token: string) {
       const errorText = await response.text();
       console.error('API call failed:', response.status, errorText);
       
-      // Handle 404 as empty fleet rather than error
       if (response.status === 404) {
-        console.log('No records found, returning empty fleet');
+        console.log('No records found, returning empty result');
         return { fleet: { equipment: [] } };
       }
       
-      // Para rate limit e server errors, lançar erro para retry
       if ([429, 500, 502, 503, 504].includes(response.status)) {
         throw response;
       }
       
-      throw new Error(`API call failed: ${response.status} ${errorText}`);
+      throw new Error(`API call failed: ${response.status}`);
     }
 
     return await response.json();
   });
 }
 
-// Normalização de dados para formato canônico
+// Normalization functions (canonical INFRA schema)
 function normalizeAsset(raw: any): NormalizedAsset {
-  const equipment = raw;
-  const header = equipment.header || {};
-  const location = equipment.location || {};
-  const hours = equipment.cumulativeOperatingHours || {};
-  const fuel = equipment.fuelRemaining || {};
-  const engine = equipment.engineStatus || {};
-
   return {
-    oem_asset_id: header.equipmentID || header.equipmentId || '',
-    asset_name: header.model || '',
-    make: header.make || 'Caterpillar',
-    model: header.model || '',
-    serial_number: header.serialNumber || '',
-    operating_hours: hours.hour || 0,
-    fuel_percent: fuel.percent || 0,
-    engine_speed: engine.speed || 0,
-    latitude: location.latitude,
-    longitude: location.longitude,
-    altitude: location.altitude,
+    oem: 'caterpillar',
+    oem_asset_id: raw.id || raw.assetId || raw.assetID || '',
+    name: raw.name || raw.assetName,
+    make: raw.make || 'Caterpillar',
+    model: raw.model,
+    serial: raw.serialNumber || raw.serial,
+    subscription: raw.subscriptionStatus || raw.subscription,
+    status: raw.status || raw.assetStatus,
+  };
+}
+
+function normalizeLocation(raw: any): NormalizedLocation {
+  const ts = raw.eventTime || raw.timestamp || raw.occurrenceTime || '';
+  const lat = raw.lat || raw.latitude;
+  const lon = raw.lon || raw.longitude;
+  return {
+    asset_ref: raw.assetId || raw.id || '',
+    ts,
+    lat,
+    lon,
+    speed: raw.speed,
+    heading: raw.heading,
+    source: 'visionlink',
+  };
+}
+
+function normalizeHours(raw: any): NormalizedHours {
+  const ts = raw.eventTime || raw.timestamp || '';
+  return {
+    asset_ref: raw.assetId || raw.id || '',
+    ts,
+    hour_meter: raw.hourMeter || raw.hours,
+    source: 'visionlink',
+  };
+}
+
+function normalizeFault(raw: any): NormalizedFault {
+  const ts = raw.eventTime || raw.timestamp || '';
+  return {
+    asset_ref: raw.assetId || raw.id || '',
+    ts,
+    code: raw.faultCode || raw.code,
+    severity: raw.severity,
+    description: raw.description || raw.message,
+    source: 'visionlink',
+  };
+}
+
+function normalizeFuel(raw: any): NormalizedFuel {
+  const ts = raw.eventTime || raw.timestamp || '';
+  return {
+    asset_ref: raw.assetId || raw.id || '',
+    ts,
+    fuel_used: raw.fuelUsed || raw.fuelConsumption,
+    fuel_level: raw.fuelLevel,
+    source: 'visionlink',
   };
 }
 
@@ -197,56 +249,109 @@ function normalizeFleet(rawData: any): { assets: NormalizedAsset[] } {
   }
   
   const assets = equipment.map((item: any) => normalizeAsset(item));
-  console.log(`Normalized ${assets.length} assets`);
-  
   return { assets };
 }
 
+function normalizeCollection(rawData: any, normalizer: (raw: any) => any): any[] {
+  const items: any[] = [];
+  
+  if (rawData && Array.isArray(rawData)) {
+    for (const item of rawData) {
+      items.push(normalizer(item));
+    }
+  }
+  
+  return items;
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { endpoint, method = 'fleet', normalize = true } = await req.json();
-
-    // Obter token OAuth
+    const { endpoint, method = 'assets' } = await req.json();
     const token = await getCaterpillarToken();
 
-    let data;
-    
-    switch (method) {
-      case 'fleet':
-        // Buscar snapshot da frota
-        const page = endpoint || '1';
-        const rawFleetData = await callCaterpillarAPI(`/fleet/${page}`, token);
-        data = normalize ? normalizeFleet(rawFleetData) : rawFleetData;
-        break;
-        
-      case 'equipment':
-        // Buscar snapshot de equipamento específico
-        const rawEquipmentData = await callCaterpillarAPI(endpoint, token);
-        data = normalize ? { asset: normalizeAsset(rawEquipmentData) } : rawEquipmentData;
-        break;
-        
-      case 'faults':
-        // Buscar time series de faults
-        data = await callCaterpillarAPI(endpoint, token);
-        break;
-        
-      case 'locations':
-        // Buscar time series de localizações
-        data = await callCaterpillarAPI(endpoint, token);
-        break;
-        
-      default:
-        throw new Error(`Unknown method: ${method}`);
+    // High-level endpoints (matching Python client)
+    if (method === 'assets') {
+      console.log('Fetching assets...');
+      const page = endpoint || '1';
+      const data = await callCaterpillarAPI(`/fleet/${page}`, token);
+      const normalized = normalizeFleet(data);
+      console.log(`Normalized ${normalized.assets.length} assets`);
+      
+      return new Response(
+        JSON.stringify(normalized),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    if (method === 'locations') {
+      console.log(`Fetching locations: ${endpoint}`);
+      const data = await callCaterpillarAPI(endpoint, token);
+      const items = data?.locations || data?.items || data || [];
+      const normalized = normalizeCollection(items, normalizeLocation);
+      console.log(`Normalized ${normalized.length} locations`);
+      
+      return new Response(
+        JSON.stringify(normalized),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (method === 'hours') {
+      console.log(`Fetching hours: ${endpoint}`);
+      const data = await callCaterpillarAPI(endpoint, token);
+      const items = data?.hours || data?.items || data || [];
+      const normalized = normalizeCollection(items, normalizeHours);
+      console.log(`Normalized ${normalized.length} hour records`);
+      
+      return new Response(
+        JSON.stringify(normalized),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (method === 'faults') {
+      console.log(`Fetching faults: ${endpoint}`);
+      const data = await callCaterpillarAPI(endpoint, token);
+      const items = data?.faults || data?.items || data || [];
+      const normalized = normalizeCollection(items, normalizeFault);
+      console.log(`Normalized ${normalized.length} faults`);
+      
+      return new Response(
+        JSON.stringify(normalized),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (method === 'fuel') {
+      console.log(`Fetching fuel: ${endpoint}`);
+      const data = await callCaterpillarAPI(endpoint, token);
+      const items = data?.fuel || data?.items || data || [];
+      const normalized = normalizeCollection(items, normalizeFuel);
+      console.log(`Normalized ${normalized.length} fuel records`);
+      
+      return new Response(
+        JSON.stringify(normalized),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Legacy compatibility
+    if (method === 'equipment') {
+      console.log(`Fetching equipment: ${endpoint}`);
+      const data = await callCaterpillarAPI(endpoint, token);
+      const normalized = normalizeAsset(data);
+      
+      return new Response(
+        JSON.stringify(normalized),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    throw new Error(`Unknown method: ${method}`);
 
   } catch (error) {
     console.error('Error in caterpillar-api function:', error);
