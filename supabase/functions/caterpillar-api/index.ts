@@ -277,7 +277,7 @@ serve(async (req) => {
     if (method === 'assets') {
       console.log('Fetching assets...');
       const page = endpoint || '1';
-      const data = await callCaterpillarAPI(`/fleet/${page}`, token);
+      const data = await callCaterpillarAPI(`/assets?pageSize=100&page=${page}`, token);
       const normalized = normalizeFleet(data);
       console.log(`Normalized ${normalized.assets.length} assets`);
       
