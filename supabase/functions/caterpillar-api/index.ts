@@ -301,23 +301,60 @@ serve(async (req) => {
       console.log('Fetching assets...');
       const page = endpoint || '1';
       
-      // Try multiple endpoint variations
+      // Try multiple endpoint variations based on diagnostic script
+      const endpointsToTry = [
+        `/telematics/iso15143/assets?pageSize=100&page=${page}`,
+        `/assets?pageSize=100&page=${page}`,
+        `/visionlink/assets?pageSize=100&page=${page}`,
+        `/visionlink/v2/assets?pageSize=100&page=${page}`,
+        `/v1/assets?pageSize=100&page=${page}`,
+        `/api/assets?pageSize=100&page=${page}`,
+        `/fleet/equipment?pageSize=100&page=${page}`,
+      ];
+      
       let data;
-      try {
-        // Try ISO 15143-3 standard endpoint first
-        data = await callCaterpillarAPI(`/telematics/iso15143/assets?pageSize=100&page=${page}`, token);
-      } catch (e) {
-        console.log('ISO endpoint failed, trying VisionLink endpoint...');
+      let successEndpoint = null;
+      
+      for (const endpoint of endpointsToTry) {
         try {
-          data = await callCaterpillarAPI(`/visionlink/v2/assets?pageSize=100&page=${page}`, token);
-        } catch (e2) {
-          console.log('VisionLink v2 failed, trying fleet endpoint...');
-          data = await callCaterpillarAPI(`/fleet/equipment?pageSize=100&page=${page}`, token);
+          console.log(`Trying endpoint: ${endpoint}`);
+          data = await callCaterpillarAPI(endpoint, token);
+          successEndpoint = endpoint;
+          console.log(`✓ Success with endpoint: ${endpoint}`);
+          break;
+        } catch (e) {
+          console.log(`✗ Failed endpoint: ${endpoint}`);
+          continue;
         }
       }
       
+      if (!data) {
+        console.error('All asset endpoints failed. Recommendations:');
+        console.error('1. Verify Client ID is authorized for CEQ Org in VisionLink/ISO product');
+        console.error('2. Check that each CEQ serial has "Data Sharing/AEMP" enabled');
+        console.error('3. Confirm subscription level supports API access (not "Daily" tier)');
+        console.error('4. Validate entitlements in Caterpillar portal');
+        
+        return new Response(
+          JSON.stringify({ 
+            assets: [],
+            diagnostic: {
+              status: 'no_assets',
+              message: 'Unable to fetch assets from any known endpoint',
+              recommendations: [
+                'Verify Client ID authorization for CEQ organization',
+                'Enable Data Sharing/AEMP for equipment serials',
+                'Check API subscription level eligibility',
+                'Validate entitlements in Caterpillar portal'
+              ]
+            }
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       const normalized = normalizeFleet(data);
-      console.log(`Normalized ${normalized.assets.length} assets`);
+      console.log(`✓ Normalized ${normalized.assets.length} assets from ${successEndpoint}`);
       
       return new Response(
         JSON.stringify(normalized),
@@ -327,54 +364,86 @@ serve(async (req) => {
 
     if (method === 'locations') {
       console.log(`Fetching locations: ${endpoint}`);
-      const data = await callCaterpillarAPI(endpoint, token);
-      const items = data?.locations || data?.items || data || [];
-      const normalized = normalizeCollection(items, normalizeLocation);
-      console.log(`Normalized ${normalized.length} locations`);
-      
-      return new Response(
-        JSON.stringify(normalized),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      try {
+        const data = await callCaterpillarAPI(endpoint, token);
+        const items = data?.locations || data?.items || data || [];
+        const normalized = normalizeCollection(items, normalizeLocation);
+        console.log(`✓ Normalized ${normalized.length} locations`);
+        
+        return new Response(
+          JSON.stringify(normalized),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error(`Failed to fetch locations: ${error}`);
+        return new Response(
+          JSON.stringify([]),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     if (method === 'hours') {
       console.log(`Fetching hours: ${endpoint}`);
-      const data = await callCaterpillarAPI(endpoint, token);
-      const items = data?.hours || data?.items || data || [];
-      const normalized = normalizeCollection(items, normalizeHours);
-      console.log(`Normalized ${normalized.length} hour records`);
-      
-      return new Response(
-        JSON.stringify(normalized),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      try {
+        const data = await callCaterpillarAPI(endpoint, token);
+        const items = data?.hours || data?.items || data || [];
+        const normalized = normalizeCollection(items, normalizeHours);
+        console.log(`✓ Normalized ${normalized.length} hour records`);
+        
+        return new Response(
+          JSON.stringify(normalized),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error(`Failed to fetch hours: ${error}`);
+        return new Response(
+          JSON.stringify([]),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     if (method === 'faults') {
       console.log(`Fetching faults: ${endpoint}`);
-      const data = await callCaterpillarAPI(endpoint, token);
-      const items = data?.faults || data?.items || data || [];
-      const normalized = normalizeCollection(items, normalizeFault);
-      console.log(`Normalized ${normalized.length} faults`);
-      
-      return new Response(
-        JSON.stringify(normalized),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      try {
+        const data = await callCaterpillarAPI(endpoint, token);
+        const items = data?.faults || data?.items || data || [];
+        const normalized = normalizeCollection(items, normalizeFault);
+        console.log(`✓ Normalized ${normalized.length} faults`);
+        
+        return new Response(
+          JSON.stringify(normalized),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error(`Failed to fetch faults: ${error}`);
+        return new Response(
+          JSON.stringify([]),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     if (method === 'fuel') {
       console.log(`Fetching fuel: ${endpoint}`);
-      const data = await callCaterpillarAPI(endpoint, token);
-      const items = data?.fuel || data?.items || data || [];
-      const normalized = normalizeCollection(items, normalizeFuel);
-      console.log(`Normalized ${normalized.length} fuel records`);
-      
-      return new Response(
-        JSON.stringify(normalized),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      try {
+        const data = await callCaterpillarAPI(endpoint, token);
+        const items = data?.fuel || data?.items || data || [];
+        const normalized = normalizeCollection(items, normalizeFuel);
+        console.log(`✓ Normalized ${normalized.length} fuel records`);
+        
+        return new Response(
+          JSON.stringify(normalized),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error(`Failed to fetch fuel: ${error}`);
+        return new Response(
+          JSON.stringify([]),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Legacy compatibility
