@@ -24,9 +24,8 @@ async function getCaterpillarToken(): Promise<string> {
 
   console.log('Fetching new Caterpillar OAuth token...');
 
-  // Using Azure AD OAuth 2.0 client credentials flow
-  // Using "organizations" tenant for work/school accounts
-  const tokenUrl = 'https://login.microsoftonline.com/organizations/oauth2/v2.0/token';
+  // Using Azure AD OAuth 2.0 client credentials flow with Caterpillar's tenant ID
+  const tokenUrl = 'https://login.microsoftonline.com/ceb177bf-013b-49ab-8a9c-4abce32afc1e/oauth2/v2.0/token';
   
   // Construct the scope using the client ID
   const scope = `${clientId}/.default`;
